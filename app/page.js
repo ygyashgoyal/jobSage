@@ -1,103 +1,162 @@
-import Image from "next/image";
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
+import { motion } from 'framer-motion';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState(null);
+  const [latestAnalysis, setLatestAnalysis] = useState(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        if (error || !session?.user) {
+          router.push('/login');
+        } else {
+          setUser(session.user);
+          setAccessToken(session.access_token);
+        }
+      } catch (err) {
+        console.error('Authentication check failed:', err);
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  useEffect(() => {
+    const fetchLatestAnalysis = async () => {
+      if (!user || !accessToken) return;
+      setAnalysisLoading(true);
+
+      try {
+        const res = await fetch('/api/latestAnalysis', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch');
+        }
+
+        const data = await res.json();
+        setLatestAnalysis(data);
+      } catch (err) {
+        console.error('Failed to fetch latest analysis:', err);
+      } finally {
+        setAnalysisLoading(false);
+      }
+    };
+
+    fetchLatestAnalysis();
+  }, [user, accessToken]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-gray-900 text-white">
+        <p className="text-lg animate-pulse">Checking authentication...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative min-h-screen bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] flex items-center justify-center overflow-hidden px-6">
+      {/* Background Blobs */}
+      <div className="absolute w-72 h-72 bg-purple-600 opacity-30 rounded-full filter blur-3xl top-10 left-10 animate-pulse" />
+      <div className="absolute w-80 h-80 bg-cyan-500 opacity-20 rounded-full filter blur-3xl bottom-20 right-10 animate-ping" />
+
+      {/* Main Content */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6 }}
+        className="relative z-10 w-full max-w-5xl backdrop-blur-2xl bg-white/5 border border-white/20 rounded-3xl shadow-xl p-10 flex flex-col md:flex-row items-center gap-8"
+      >
+        {/* Text Section */}
+        <div className="flex-1 text-white">
+          <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">
+            Welcome to <span className="text-cyan-400">Your Dashboard</span>
+          </h1>
+          <p className="text-lg text-gray-300 mb-6">
+            Analyze, visualize, and manage your data with a seamless experience.
+          </p>
+
+          {/* Analysis Section */}
+          {analysisLoading ? (
+            <p className="text-sm text-gray-400">Loading your last analysis...</p>
+          ) : latestAnalysis ? (
+            <div className="text-sm bg-white/10 border border-white/20 rounded-lg p-4 mb-6">
+              <p className="text-gray-300">
+                <strong>Last Analysis Date:</strong>{' '}
+                {latestAnalysis?.created_at
+                  ? new Date(latestAnalysis.created_at).toLocaleString()
+                  : 'N/A'}
+              </p>
+              <p className="text-gray-300">
+                <strong>Dream Job:</strong>{' '}
+                {latestAnalysis?.input_data?.job_target?.length
+                  ? latestAnalysis.input_data?.job_target
+                  : 'None'}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 mb-6">No previous analysis found.</p>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push('/newAnalysis')}
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:opacity-90 text-white font-semibold rounded-xl shadow-lg"
+            >
+              New Analysis
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push('/prevAnalysis')}
+              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 hover:opacity-90 text-white font-semibold rounded-xl shadow-lg"
+            >
+              Previous Analysis
+            </motion.button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+        {/* Visual Section */}
+        <motion.div
+          initial={{ opacity: 0, x: 60 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className="flex-1"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+          <img
+            src="/tamplate.webp"
+            alt="Illustration"
+            className="w-full h-64 md:h-72 object-cover rounded-2xl shadow-lg border border-white/10"
+            onError={(e) => {
+              e.currentTarget.src = '/fallback.jpg';
+            }}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
