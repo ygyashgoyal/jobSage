@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 export default function Home() {
   const router = useRouter();
@@ -147,9 +148,11 @@ export default function Home() {
           transition={{ delay: 0.3 }}
           className="flex-1"
         >
-          <img
+          <Image
             src="/tamplate.webp"
             alt="Illustration"
+            width={800} // You can customize width/height
+            height={300}
             className="w-full h-64 md:h-72 object-cover rounded-2xl shadow-lg border border-white/10"
             onError={(e) => {
               e.currentTarget.src = '/fallback.jpg';
